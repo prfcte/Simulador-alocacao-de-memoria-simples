@@ -137,4 +137,3 @@ Esse resultado ilustra bem o problema central do trabalho: mesmo havendo **628.5
 - Busca de bloco é O(n) nas três estratégias (lista simples, sem índice por tamanho); para uma memória com muitos blocos, uma árvore balanceada ou *free lists* segregadas por faixa de tamanho seriam mais eficientes.
 - `scanf` não verifica o retorno — uma entrada não numérica no menu trava a leitura em vez de pedir novamente.
 - Sem suporte a *realloc* (crescer/encolher uma alocação existente).
-- A opção 5 gera cargas aleatórias soltas; não há um modo de "replay" de um cenário específico para comparar as três estratégias exatamente sob a mesma sequência de pedidos.
