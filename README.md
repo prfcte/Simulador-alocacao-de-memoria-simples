@@ -1,48 +1,66 @@
 # Simulador de Alocação Dinâmica de Memória
 
-Simulador em C, com menu interativo via linha de comando, que reproduz o comportamento de um alocador de memória dinâmica implementando três estratégias clássicas de busca de espaço livre: **First Fit**, **Best Fit** e **Worst Fit**. A memória é simulada como uma região de 1 MiB, organizada em blocos que podem ser divididos (*split*) e reunidos (*coalescência*) conforme alocações e liberações acontecem — permitindo observar, na prática, como e por que a fragmentação de memória surge.
+Simulador desenvolvido em C que reproduz a alocação dinâmica de memória utilizando três estratégias clássicas: **First Fit**, **Best Fit** e **Worst Fit**.
+
+A memória é simulada como uma região de **1 MiB**, organizada em blocos por meio de uma lista duplamente encadeada. O programa permite realizar alocações, liberações, divisão e fusão de blocos, além de gerar automaticamente solicitações aleatórias.
 
 ## Conceitos
 
-Em um sistema com alocação dinâmica, o gerenciador de memória mantém o controle de quais regiões estão livres e quais estão ocupadas, respondendo a pedidos de alocação e liberação em qualquer ordem. Para isso, ele organiza a memória livre em **blocos**, e a cada pedido precisa escolher qual bloco livre usar.
+O simulador representa uma memória dividida em blocos livres e ocupados. A cada solicitação, uma estratégia é utilizada para selecionar um bloco livre adequado.
 
-Duas formas de desperdício podem ocorrer:
+* **First Fit:** seleciona o primeiro bloco livre que comporte a solicitação.
+* **Best Fit:** seleciona o menor bloco livre que comporte a solicitação.
+* **Worst Fit:** seleciona o maior bloco livre que comporte a solicitação.
 
-- **Fragmentação interna**: o bloco alocado é maior que o necessário (aqui, quando a sobra de um *split* é pequena demais para valer a pena virar um bloco separado, ela fica "presa" dentro do bloco alocado).
-- **Fragmentação externa**: existe memória livre suficiente no total, mas espalhada em pedaços pequenos e não contíguos, nenhum deles grande o bastante para um novo pedido.
+Durante a utilização da memória podem ocorrer dois tipos de fragmentação:
 
-As três estratégias implementadas escolhem o bloco livre de formas diferentes, o que muda como a fragmentação externa se acumula ao longo do tempo:
-
-- **First Fit** — aloca no primeiro bloco livre grande o suficiente encontrado ao percorrer a lista. Simples e rápido (não precisa varrer a lista inteira), mas tende a espalhar fragmentos perto do início da memória.
-- **Best Fit** — percorre toda a lista e aloca no menor bloco livre que ainda comporta o pedido, minimizando a sobra imediata. Como efeito colateral, tende a deixar muitos fragmentos pequenos ("micro-buracos") que dificilmente serão reaproveitados.
-- **Worst Fit** — percorre toda a lista e aloca sempre no maior bloco disponível, na expectativa de que a sobra continue grande e útil. Na prática, tende a destruir os blocos grandes rapidamente, deixando o sistema sem "reserva" para pedidos maiores.
+* **Fragmentação interna:** ocorre quando existe espaço não utilizado dentro de um bloco alocado. No simulador, isso acontece quando a sobra de uma alocação é menor que `MIN_BLOCO` (32 bytes).
+* **Fragmentação externa:** ocorre quando a memória livre está dividida em vários blocos separados, dificultando uma nova alocação mesmo que exista espaço livre suficiente no total.
 
 ## Estrutura do projeto
 
-```
-functions.c   -> struct Bloco e toda a lógica do simulador
-                 (criação/inicialização, first_fit/best_fit/worst_fit,
-                 split, coalescência, alocar/liberar, exibição, geração
-                 de carga aleatória)
-main.c        -> ponto de entrada: inicializa a semente aleatória,
-                 cria a memória simulada e roda o menu interativo
-                 (inclui functions.c diretamente)
+```text
+functions.c  → Estrutura dos blocos e lógica do simulador
+                - criação e inicialização
+                - First Fit, Best Fit e Worst Fit
+                - divisão de blocos (split)
+                - coalescência
+                - alocação e liberação
+                - exibição da memória
+                - geração de alocações aleatórias
+
+menu.c       → Interface e fluxo de interação
+                - inicialização da memória
+                - menu principal
+                - entrada de dados
+                - seleção da estratégia
+                - chamadas das operações
+
+main.c       → Ponto de entrada do programa
+                - chama a função menu()
 ```
 
-## Como compilar e rodar
+> **Observação:** atualmente o projeto utiliza `#include "functions.c"` em `menu.c` e `#include "menu.c"` em `main.c`. Dessa forma, os arquivos são incluídos durante a compilação a partir do `main.c`.
+
+## Como compilar e executar
+
+No Linux, utilize:
 
 ```bash
 gcc -O2 -Wall -Wextra -o simulador main.c
+```
+
+Depois execute:
+
+```bash
 ./simulador
 ```
 
-(`functions.c` não precisa ser compilado separadamente — `main.c` o inclui via `#include "functions.c"`.)
+## Menu
 
-## Uso / menu
+Ao iniciar o programa, o menu apresenta:
 
-Ao rodar o programa, o menu principal aparece assim:
-
-```
+```text
 =============== MENU ===============
 Estrategia atual: FIRST FIT
 
@@ -52,18 +70,51 @@ Estrategia atual: FIRST FIT
 4 - Alterar estrategia
 5 - Gerar 10 alocacoes aleatorias
 0 - Sair
+====================================
+—> Opcao:
 ```
 
-- **1 — Alocar memória**: pede um tamanho em bytes e tenta alocar usando a estratégia atual.
-- **2 — Liberar memória**: pede o ID de uma alocação ativa e a libera, disparando a coalescência com blocos vizinhos livres.
-- **3 — Mostrar memória**: imprime o estado atual da memória simulada, bloco a bloco, com faixa de endereços, tamanho e status (`FREE` ou `ID <n>`).
-- **4 — Alterar estratégia**: troca entre First Fit, Best Fit e Worst Fit a qualquer momento — inclusive no meio de uma sessão, o que permite comparar como cada uma se sairia a partir do mesmo estado de memória.
-- **5 — Gerar 10 alocações aleatórias**: dispara 10 pedidos de alocação com tamanhos aleatórios entre 32 e 8.192 bytes, útil para criar rapidamente uma memória fragmentada e observar o comportamento da estratégia atual sob carga.
-- **0 — Sair**: libera toda a lista de blocos e encerra o programa.
+### 1 — Alocar memória
 
-## Como funciona por dentro
+Solicita ao usuário o tamanho desejado em bytes e tenta realizar a alocação utilizando a estratégia atualmente selecionada.
 
-### A struct `Bloco`
+### 2 — Liberar memória
+
+Solicita o ID de uma alocação existente e libera o bloco correspondente. Após a liberação, o programa verifica se é possível realizar a coalescência com blocos livres adjacentes.
+
+### 3 — Mostrar memória
+
+Exibe todos os blocos existentes, mostrando:
+
+* intervalo de endereços;
+* estado (`LIVRE` ou `ID X`);
+* tamanho do bloco.
+
+### 4 — Alterar estratégia
+
+Permite alternar entre:
+
+1. First Fit;
+2. Best Fit;
+3. Worst Fit.
+
+A alteração pode ser realizada durante a execução sem reiniciar a memória simulada.
+
+### 5 — Gerar 10 alocações aleatórias
+
+Realiza **10 solicitações de alocação** com tamanhos aleatórios entre **32 bytes e 8 KiB (8192 bytes)**, utilizando a estratégia atualmente selecionada.
+
+Essa opção permite gerar rapidamente diferentes configurações de memória e observar a divisão dos blocos e a formação de espaços livres.
+
+### 0 — Sair
+
+Encerra o programa e libera os nós da lista utilizada para representar a memória.
+
+## Como funciona
+
+### Estrutura `Bloco`
+
+A memória é representada por uma lista duplamente encadeada:
 
 ```c
 typedef struct Bloco {
@@ -77,63 +128,130 @@ typedef struct Bloco {
 } Bloco;
 ```
 
-A memória simulada é uma lista duplamente encadeada de blocos, na ordem em que aparecem fisicamente no espaço de endereços. Cada bloco guarda seu deslocamento (`inicio`), tamanho, se está livre e, quando ocupado, o `id` da alocação — isso é o que permite `mostrar_memoria()` imprimir faixas de endereço reais como `[200000 - 319999] ID 4`.
+Cada bloco possui:
 
-### Busca do bloco (as três estratégias)
+* `inicio`: endereço inicial dentro da memória simulada;
+* `tamanho`: tamanho do bloco em bytes;
+* `livre`: indica se o bloco está livre;
+* `id`: identifica uma alocação ocupada;
+* `anterior`: ponteiro para o bloco anterior;
+* `proximo`: ponteiro para o próximo bloco.
 
-Cada estratégia é uma função separada que percorre a lista e escolhe um bloco livre segundo seu próprio critério; `buscar_bloco()` apenas direciona para a função certa:
+Os blocos são mantidos na ordem em que aparecem na memória.
+
+### Busca dos blocos
+
+As três estratégias possuem funções próprias:
+
+```text
+First Fit → primeiro bloco adequado
+Best Fit  → menor bloco adequado
+Worst Fit → maior bloco adequado
+```
+
+A função `buscar_bloco()` seleciona qual estratégia será utilizada.
+
+### Split
+
+Quando um bloco livre é maior que a solicitação, ele pode ser dividido:
+
+```text
+Antes:
+
+[          LIVRE          ]
+
+Depois:
+
+[      OCUPADO      ][   LIVRE   ]
+```
+
+Se a sobra for maior ou igual a `MIN_BLOCO` (32 bytes), um novo bloco livre é criado.
+
+Caso a sobra seja menor que 32 bytes, ela permanece dentro do bloco alocado, caracterizando fragmentação interna.
+
+### Coalescência
+
+Quando um bloco é liberado, o simulador verifica seus vizinhos.
+
+Por exemplo:
+
+```text
+Antes:
+
+[ LIVRE ][ LIBERADO ][ LIVRE ]
+
+Depois:
+
+[          LIVRE          ]
+```
+
+Os blocos livres adjacentes são unidos em um único bloco maior, reduzindo a fragmentação externa.
+
+## Geração aleatória
+
+A opção de geração aleatória utiliza `rand()` para produzir dez tamanhos entre 32 e 8192 bytes.
+
+A semente do gerador é inicializada no início da execução:
 
 ```c
-Bloco *first_fit(Bloco *memoria, size_t tamanho){
-    Bloco *atual = memoria;
-    while (atual != NULL) {
-        if (atual->livre && atual->tamanho >= tamanho) {
-            return atual;              // primeiro que serve
-        }
-        atual = atual->proximo;
-    }
-    return NULL;
-}
+srand((unsigned int) time(NULL));
 ```
 
-`best_fit()` e `worst_fit()` têm a mesma estrutura de laço, mas em vez de retornar assim que encontram um candidato, continuam percorrendo toda a lista guardando o menor (Best Fit) ou o maior (Worst Fit) bloco livre encontrado até então.
+Cada valor gerado é enviado para a função de alocação utilizando a estratégia atualmente selecionada.
 
-### Split (divisão de bloco)
+Exemplo:
 
-Quando o bloco escolhido é maior que o pedido, `dividir_bloco()` o corta em dois: um do tamanho exato pedido (que vira ocupado) e outro com a sobra (que continua livre). Se a sobra for menor que `MIN_BLOCO` (32 bytes), ela não vira um bloco novo — fica "presa" dentro do bloco alocado como fragmentação interna, evitando criar blocos livres inutilmente pequenos.
-
-### Coalescência (fusão de blocos livres)
-
-Quando um bloco é liberado, `coalescer()` verifica se o vizinho anterior e o vizinho seguinte, na lista, também estão livres, fundindo-os em um único bloco maior quando for o caso. É essa fusão que evita que a memória fique permanentemente picada em pedaços cada vez menores conforme alocações e liberações se acumulam.
-
-## Exemplo de sessão (fragmentação em ação)
-
-A sequência abaixo foi rodada de verdade com o simulador, usando First Fit, e mostra a fragmentação externa surgindo a partir de operações comuns:
-
-1. Aloca 200.000 bytes → **ID 1**, início 0
-2. Aloca 150.000 bytes → **ID 2**, início 200.000
-3. Aloca 100.000 bytes → **ID 3**, início 350.000
-4. Libera o **ID 2** → o espaço `[200.000–349.999]` (150.000 bytes) volta a ficar livre; como os blocos vizinhos (ID 1 e ID 3) continuam ocupados, não há coalescência possível
-5. Aloca 120.000 bytes → cai exatamente no buraco deixado pelo ID 2 (First Fit encontra esse bloco primeiro), virando **ID 4**, e o *split* deixa uma sobra livre de 30.000 bytes
-
-Estado final da memória (opção 3 do menu):
-
-```
-============================================================
-                    MEMORIA SIMULADA
-============================================================
-[0 - 199999] ID 1 | 200000 bytes
-[200000 - 319999] ID 4 | 120000 bytes
-[320000 - 349999] FREE | 30000 bytes
-[350000 - 449999] ID 3 | 100000 bytes
-[450000 - 1048575] FREE | 598576 bytes
-============================================================
+```text
+Alocacao 1: 452 bytes
+Alocacao 2: 7190 bytes
+Alocacao 3: 1832 bytes
+...
+Alocacao 10: 367 bytes
 ```
 
-Esse resultado ilustra bem o problema central do trabalho: mesmo havendo **628.576 bytes livres no total** (30.000 + 598.576), um pedido de, digamos, 500.000 bytes seria atendido tranquilamente pelo bloco do final — mas um cenário com mais alocações e liberações intercaladas facilmente deixaria vários buracos pequenos como o de 30.000 bytes, nenhum deles grande o bastante para pedidos maiores, mesmo que a soma total ainda fosse suficiente. É exatamente esse fenômeno — fragmentação externa — que muda de comportamento conforme a estratégia de busca escolhida (First, Best ou Worst Fit).
+## Exemplo de funcionamento
+
+Considere uma memória inicialmente livre:
+
+```text
+[---------------- 1 MiB ----------------]
+```
+
+Após algumas alocações, ela pode assumir uma configuração como:
+
+```text
+[ ID 1 ][ LIVRE ][ ID 2 ][ LIVRE ][ ID 3 ][ LIVRE ]
+```
+
+Se uma região ocupada for liberada:
+
+```text
+[ ID 1 ][ LIVRE ][ ID 2 ][ LIVRE ][ ID 3 ][ LIVRE ]
+          ↑
+       liberado
+```
+
+Caso blocos livres adjacentes sejam encontrados, a coalescência os transforma em uma região maior.
+
+A opção **Mostrar memória** permite acompanhar essas alterações diretamente no terminal.
+
+## Complexidade
+
+Na implementação atual, baseada em lista duplamente encadeada:
+
+| Estratégia | Busca             |
+| ---------- | ----------------- |
+| First Fit  | O(n) no pior caso |
+| Best Fit   | O(n)              |
+| Worst Fit  | O(n)              |
+
+O First Fit pode encontrar um bloco adequado antes de percorrer toda a lista. Best Fit e Worst Fit precisam percorrer a lista para identificar, respectivamente, o menor ou o maior bloco adequado.
+
+A divisão e a coalescência podem ser realizadas em **O(1)** após o bloco envolvido já ter sido localizado, pois dependem principalmente da atualização dos ponteiros da lista.
+
 
 ## Limitações e possíveis melhorias
 
-- Busca de bloco é O(n) nas três estratégias (lista simples, sem índice por tamanho); para uma memória com muitos blocos, uma árvore balanceada ou *free lists* segregadas por faixa de tamanho seriam mais eficientes.
+- Busca de bloco é O(n) nas três estratégias (lista simples, sem índice por tamanho); para uma memória com muitos blocos, uma árvore balanceada ou *LIVRE lists* segregadas por faixa de tamanho seriam mais eficientes.
 - `scanf` não verifica o retorno — uma entrada não numérica no menu trava a leitura em vez de pedir novamente.
 - Sem suporte a *realloc* (crescer/encolher uma alocação existente).
