@@ -4,6 +4,9 @@
 
 #define MEMORIA_TOTAL (1024 * 1024)
 #define MIN_BLOCO 32
+#define FIRST_FIT 1
+#define BEST_FIT 2
+#define WORST_FIT 3
 
 typedef struct Bloco {
     size_t inicio;
@@ -98,13 +101,13 @@ Bloco *worst_fit(Bloco *memoria, size_t tamanho){
 
 Bloco *buscar_bloco(Bloco *memoria, size_t tamanho, int estrategia){
     switch (estrategia) {
-        case 1:
+        case FIRST_FIT:
             return first_fit(memoria, tamanho);
 
-        case 2:
+        case BEST_FIT:
             return best_fit(memoria, tamanho);
 
-        case 3:
+        case WORST_FIT:
             return worst_fit(memoria, tamanho);
 
         default:
@@ -225,7 +228,7 @@ int alocar(Bloco *memoria, size_t tamanho, int estrategia, int id){
     return 1;
 }
 
-// ---------- FREE ---------- 
+// ---------- LIBERACAO ---------- 
 
 int liberar(Bloco *memoria, int id){
     Bloco *atual = memoria;
@@ -269,7 +272,7 @@ void mostrar_memoria(Bloco *memoria){
                atual->inicio + atual->tamanho - 1);
 
         if (atual->livre) {
-            printf("FREE");
+            printf("LIVRE");
         } else {
             printf("ID %d", atual->id);
         }
@@ -289,15 +292,15 @@ void mostrar_estrategia(int estrategia){
 
     switch (estrategia) {
 
-        case 1:
+        case FIRST_FIT:
             printf("FIRST FIT\n");
             break;
 
-        case 2:
+        case BEST_FIT:
             printf("BEST FIT\n");
             break;
 
-        case 3:
+        case WORST_FIT:
             printf("WORST FIT\n");
             break;
 
