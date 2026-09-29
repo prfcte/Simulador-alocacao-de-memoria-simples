@@ -252,6 +252,6 @@ A divisão e a coalescência podem ser realizadas em **O(1)** após o bloco envo
 
 ## Limitações e possíveis melhorias
 
-- Busca de bloco é O(n) nas três estratégias (lista simples, sem índice por tamanho); para uma memória com muitos blocos, uma árvore balanceada ou *LIVRE lists* segregadas por faixa de tamanho seriam mais eficientes.
+- Busca de bloco é O(n) nas três estratégias (lista simples, sem índice por tamanho); para uma memória com muitos blocos, alguma outra estratégia poderia ser mais eficiente.
 - `scanf` não verifica o retorno — uma entrada não numérica no menu trava a leitura em vez de pedir novamente.
 - Sem suporte a *realloc* (crescer/encolher uma alocação existente).
